@@ -1,0 +1,8 @@
+# Manipulación de datos
+pandas==3.0.2
+
+# Visualización
+matplotlib==3.10.8
+
+# Entorno interactivo
+ipykernel==7.2.0

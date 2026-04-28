@@ -209,3 +209,7 @@ __marimo__/
 # Dataset - no subir por términos de uso de Kaggle
 data/*.csv
 data/*.zip
+
+# Modelos entrenados (se regeneran)
+models/*.pkl
+models/*.joblib

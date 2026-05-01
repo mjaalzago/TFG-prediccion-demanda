@@ -1,0 +1,15 @@
+[theme]
+# Color principal
+primaryColor = "#0097b2"
+
+# Fondos y textos
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F4F5"
+textColor = "#1f3a5f"
+
+# Tipografía
+font = "sans serif"
+
+[server]
+# Puerto local del panel
+port = 8501

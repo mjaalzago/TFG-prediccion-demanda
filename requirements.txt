@@ -26,3 +26,7 @@ pmdarima==2.0.4
 
 # Compatibilidad con pmdarima
 scikit-learn==1.5.2
+
+# Panel de visualización
+streamlit==1.40.0
+plotly==5.24.1

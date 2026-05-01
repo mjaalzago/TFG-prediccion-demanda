@@ -23,3 +23,6 @@ cmdstanpy==1.3.0
 # Modelo de referencia: SARIMA
 statsmodels==0.14.6
 pmdarima==2.0.4
+
+# Compatibilidad con pmdarima
+scikit-learn==1.5.2

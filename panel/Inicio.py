@@ -16,7 +16,7 @@ def inicio():
     st.title("Panel de predicción de demanda")
     st.markdown("**Restaurantes con reparto a domicilio**")
 
-    st.markdown("---")
+    st.divider()
 
     st.markdown(
         """
@@ -35,10 +35,29 @@ def inicio():
           próximos días, con el detalle por día de la semana y el intervalo
           de confianza del modelo.
 
-        - **Fiabilidad del modelo**: información sobre el rendimiento
-          histórico del modelo y comparativa con un modelo de referencia.
+        - **Fiabilidad de las predicciones**: información sobre el grado de
+          confianza de las predicciones para apoyar la toma de decisiones.
+
+        - **Panel de administrador**: vista técnica con información sobre los
+          modelos entrenados y métricas de evaluación comparativa.
         """
     )
+
+    st.divider()
+
+    # Información del proyecto al pie
+    col_proyecto, col_autora = st.columns(2)
+    with col_proyecto:
+        st.markdown(
+            "**Trabajo de Fin de Grado**  \n"
+            "Universidad Internacional de La Rioja (UNIR)  \n"
+            "Grado en Ingeniería Informática"
+        )
+    with col_autora:
+        st.markdown(
+            "**Autora:** María José Álvarez González  \n"
+            "**Curso:** 2025/2026"
+        )
 
 
 # Configuración de la página
@@ -64,25 +83,18 @@ paginas = [
     ),
     st.Page(
         "pages/fiabilidad.py",
-        title="Fiabilidad del modelo",
+        title="Fiabilidad de las predicciones",
         icon=":material/verified:",
     ),
     st.Page(
         "pages/administrador.py",
-        title="Administrador",
+        title="Panel de administrador",
         icon=":material/settings:",
-    ),    
+    ),
 ]
 
 # Navegación principal
 pg = st.navigation(paginas)
-
-# Pie informativo en sidebar
-st.sidebar.markdown("---")
-st.sidebar.caption(
-    "Trabajo de Fin de Grado · UNIR\n\n"
-    "Grado en Ingeniería Informática"
-)
 
 # Ejecutar la página seleccionada
 pg.run()

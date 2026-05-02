@@ -11,13 +11,17 @@ from datetime import date, timedelta
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+import holidays
 
 from utils.clima import obtener_clima
 from utils.modelos import seleccionar_modelo
+from utils.datos import cargar_datos_historicos
 from utils.fiabilidad import (
     calcular_nivel_fiabilidad,
     mae_segun_horizonte,
 )
+
+
 
 # Encabezado de la página
 st.title("Predicción de demanda")
@@ -82,6 +86,27 @@ if generar:
         # Generación de la predicción
         prediccion = modelo.predict(df_futuro)
 
+        # Carga de datos reales para superponer en el gráfico cuando la
+        # ventana de consulta solapa con el periodo de entrenamiento.
+        df_historico = cargar_datos_historicos()
+        fecha_fin = fecha_inicio + timedelta(days=horizonte - 1)
+        df_real_overlap = df_historico[
+            (df_historico["fecha"].dt.date >= fecha_inicio) &
+            (df_historico["fecha"].dt.date <= fecha_fin)
+        ].copy()
+
+        # Festivos del Reino Unido (Inglaterra) en la ventana consultada.
+        # Se utiliza la misma fuente que el modelo Prophet usa internamente
+        # para los efectos de festivos.
+        festivos_uk = holidays.UnitedKingdom(
+            subdiv="ENG",
+            years=range(fecha_inicio.year, fecha_fin.year + 1),
+        )
+        festivos_periodo = [
+            (f, festivos_uk[f]) for f in festivos_uk
+            if fecha_inicio <= f <= fecha_fin
+        ]
+
     # Solo se muestran arriba las alertas reales (fecha muy alejada del
     # entrenamiento o fallback en la API de clima). El resto de información
     # de la consulta se agrupa al final en la caja "Detalles de la consulta".
@@ -126,6 +151,23 @@ if generar:
         )
     )
 
+    # Línea de pedidos reales (solo si hay solape con el histórico)
+    if len(df_real_overlap) > 0:
+        fig.add_trace(
+            go.Scatter(
+                x=df_real_overlap["fecha"],
+                y=df_real_overlap["n_pedidos"],
+                mode="lines",
+                line=dict(color="#1f3a5f", width=1.5),
+                opacity=0.6,
+                name="Pedidos reales",
+                hovertemplate=(
+                    "<b>%{x|%d/%m/%Y}</b><br>"
+                    "Pedidos reales: %{y:.0f}<extra></extra>"
+                ),
+            )
+        )
+
     # Línea de la predicción central
     fig.add_trace(
         go.Scatter(
@@ -144,7 +186,6 @@ if generar:
 
     # Configuración visual del gráfico
     fig.update_layout(
-        #title=f"Predicción de pedidos diarios - Horizonte de {horizonte} días",
         xaxis_title="Fecha",
         yaxis_title="Pedidos previstos",
         hovermode="x unified",
@@ -165,7 +206,7 @@ if generar:
     # Para 30 días: vertical (gráfico arriba, calendario debajo)
     # ============================================================
 
-    st.markdown(f"Predicción diaria - Horizonte de {horizonte} días")
+    st.markdown(f"#### Predicción diaria - Horizonte de {horizonte} días")
 
     if horizonte == 14:
         col_grafico, col_calendario = st.columns(2)
@@ -176,24 +217,31 @@ if generar:
         contenedor_calendario = st.container()
 
     with contenedor_grafico:
-        #st.subheader(f"Predicción diaria - Horizonte de {horizonte} días")
         st.plotly_chart(fig, width="stretch", key="grafico_lineas")
 
     with contenedor_calendario:
-        #st.subheader("Vista por día de la semana")
 
         # Construcción del DataFrame con la información del calendario
         df_cal = pd.DataFrame({
             "fecha": prediccion["ds"],
             "pedidos": prediccion["yhat"].round().astype(int),
         })
-        df_cal["dia_semana"] = df_cal["fecha"].dt.dayofweek  # Lunes=0, Domingo=6
+        df_cal["dia_semana"] = df_cal["fecha"].dt.dayofweek
+        df_cal["anio_iso"] = df_cal["fecha"].dt.isocalendar().year
         df_cal["semana"] = df_cal["fecha"].dt.isocalendar().week
         df_cal["dia_mes"] = df_cal["fecha"].dt.day
         df_cal["mes_anio"] = df_cal["fecha"].dt.strftime("%B %Y")
 
-        # Reorganización para el heatmap: filas = semanas, columnas = días
-        semanas_unicas = sorted(df_cal["semana"].unique())
+        # Reorganización para el heatmap: filas = semanas, columnas = días.
+        # Ordenamos por (año ISO, semana) para evitar problemas en consultas
+        # que cruzan el cambio de año (ej: semana 52/2018 antes que 1/2019).
+        semanas_unicas = (
+            df_cal[["anio_iso", "semana"]]
+            .drop_duplicates()
+            .sort_values(["anio_iso", "semana"])
+            .apply(tuple, axis=1)
+            .tolist()
+        )
         dias_orden = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
         # Matriz de pedidos (semanas × días)
@@ -201,20 +249,45 @@ if generar:
         matriz_etiquetas = []
         matriz_textos = []
 
-        for semana in semanas_unicas:
+        for anio, semana in semanas_unicas:
             fila_pedidos = []
             fila_etiquetas = []
             fila_textos = []
             for dia in range(7):
-                registro = df_cal[(df_cal["semana"] == semana) & (df_cal["dia_semana"] == dia)]
+                registro = df_cal[
+                    (df_cal["anio_iso"] == anio) &
+                    (df_cal["semana"] == semana) &
+                    (df_cal["dia_semana"] == dia)
+                ]
                 if len(registro) > 0:
                     fecha_dia = registro["fecha"].iloc[0]
                     pedidos = registro["pedidos"].iloc[0]
                     fila_pedidos.append(pedidos)
-                    fila_etiquetas.append(
-                        f"<b>{fecha_dia.strftime('%d/%m')}</b><br>{pedidos} pedidos"
-                    )
-                    fila_textos.append(f"{fecha_dia.day}<br><b>{pedidos}</b>")
+
+                    # Detectar si la fecha es festivo
+                    es_festivo = any(fecha_dia.date() == f[0] for f in festivos_periodo)
+
+                    # Etiqueta del tooltip
+                    if es_festivo:
+                        nombre_fest = next(f[1] for f in festivos_periodo if f[0] == fecha_dia.date())
+                        fila_etiquetas.append(
+                            f"<b>{fecha_dia.strftime('%d/%m')}</b><br>"
+                            f"{pedidos} pedidos<br>"
+                            f"<i>{nombre_fest}</i>"
+                        )
+                    else:
+                        fila_etiquetas.append(
+                            f"<b>{fecha_dia.strftime('%d/%m')}</b><br>{pedidos} pedidos"
+                        )
+
+                    # Texto en la celda: número del día en rojo y negrita si es festivo
+                    if es_festivo:
+                        fila_textos.append(
+                            f"<b><span style='color:#e74c3c'>{fecha_dia.day}</span></b>"
+                            f"<br><b>{pedidos}</b>"
+                        )
+                    else:
+                        fila_textos.append(f"{fecha_dia.day}<br><b>{pedidos}</b>")
                 else:
                     fila_pedidos.append(None)
                     fila_etiquetas.append("")
@@ -228,7 +301,7 @@ if generar:
             data=go.Heatmap(
                 z=matriz_pedidos,
                 x=dias_orden,
-                y=[f"Semana {s}" for s in semanas_unicas],
+                y=[f"Semana {s}" for _, s in semanas_unicas],
                 text=matriz_textos,
                 texttemplate="%{text}",
                 textfont={"size": 13, "color": "#1f3a5f"},
@@ -260,6 +333,12 @@ if generar:
 
         st.plotly_chart(fig_cal, width="stretch", key="calendario_heatmap")
 
+        if festivos_periodo:
+            st.caption(
+                "Los días con el número en rojo en el calendario "
+                "corresponden a festivos."
+            )
+
     # ============================================================
     # Métricas resumidas
     # ============================================================
@@ -279,14 +358,28 @@ if generar:
             value=f"{prediccion['yhat'].mean():.1f}",
         )
 
+    # Cálculo del día con más pedidos y su fecha
+    idx_max = prediccion["yhat"].idxmax()
+    fecha_pico = prediccion.loc[idx_max, "ds"]
+    valor_pico = prediccion.loc[idx_max, "yhat"]
+
+    DIAS_SEMANA = ["lunes", "martes", "miércoles", "jueves",
+                   "viernes", "sábado", "domingo"]
+    MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
+             "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+    fecha_formateada = (
+        f"{DIAS_SEMANA[fecha_pico.weekday()]} "
+        f"{fecha_pico.day} de {MESES[fecha_pico.month - 1]}"
+    )
+
     with col_m3:
         st.metric(
             label="Día con más pedidos",
-            value=f"{prediccion['yhat'].max():.0f}",
-            help=f"El día {prediccion.loc[prediccion['yhat'].idxmax(), 'ds'].strftime('%d/%m/%Y')}",
+            value=f"{valor_pico:.0f}",
         )
+        st.caption(fecha_formateada.capitalize())
 
-# ---------------------------------------------------------------
+    # ---------------------------------------------------------------
     # Tarjeta compacta de fiabilidad
     # ---------------------------------------------------------------
 
@@ -334,6 +427,21 @@ if generar:
             f"{fechas[-1].strftime('%d/%m/%Y')}"
         )
 
+        # Festivos del periodo (si los hay)
+        if festivos_periodo:
+            DIAS_SEMANA_CORTO = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
+            lineas_festivos = []
+            for fecha_fest, nombre_fest in festivos_periodo:
+                dia = DIAS_SEMANA_CORTO[fecha_fest.weekday()]
+                lineas_festivos.append(
+                    f"- **{fecha_fest.strftime('%d/%m/%Y')}** "
+                    f"({dia}): {nombre_fest}"
+                )
+            st.markdown(
+                "**Festivos en el periodo:**\n" +
+                "\n".join(lineas_festivos)
+            )
+
         # Información sobre el periodo de entrenamiento
         if dias_desde_entrenamiento <= 0:
             st.markdown(
@@ -347,11 +455,6 @@ if generar:
         # Información sobre la fuente de los datos meteorológicos
         if mensaje_clima is not None and fuente_clima != "fallback":
             st.markdown(f"**Datos meteorológicos:** {mensaje_clima}")
-
-    # Guardamos la fecha y horizonte para que la página de Fiabilidad
-    # pueda mostrar la información específica de esta consulta
-    st.session_state["consulta_fecha"] = fecha_inicio
-    st.session_state["consulta_horizonte"] = horizonte
 
     # Guardamos la fecha y horizonte para que la página de Fiabilidad
     # pueda mostrar la información específica de esta consulta

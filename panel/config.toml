@@ -78,3 +78,21 @@ viento_medio_ms = 4.5
 # de las predicciones en el panel del gestor.
 umbral_verde_dias = 30
 umbral_ambar_dias = 180
+
+# ============================================================
+# Festivos locales adicionales
+# ============================================================
+# Festivos específicos del municipio o del establecimiento que no
+# están recogidos en el calendario nacional. Cada entrada se define
+# con la fecha en formato ISO (YYYY-MM-DD) y un nombre descriptivo.
+# Se incorporan al modelo y al panel junto con los festivos
+# nacionales.
+#
+# En el caso de estudio (Londres, Inglaterra) no se han identificado
+# festivos locales relevantes. Para añadir nuevos festivos, descomente
+# las líneas de ejemplo y modifíquelas según corresponda.
+
+
+#[[festivos_locales]]
+#fecha = "2019-05-03"
+#nombre = "Día de la Cruz"

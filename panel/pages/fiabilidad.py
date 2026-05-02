@@ -5,6 +5,7 @@ de confianza de las predicciones que ofrece el sistema.
 """
 
 import streamlit as st
+from datetime import date
 
 from utils.metricas import (
     INICIO_ENTRENAMIENTO,
@@ -16,7 +17,6 @@ from utils.metricas import (
     calcular_nivel_fiabilidad,
     mae_segun_horizonte,
 )
-
 
 # ---------------------------------------------------------------
 # Renderizado de la página
@@ -97,8 +97,23 @@ st.divider()
 
 st.header("Fiabilidad de tu consulta")
 
+# Recuperación del contexto de la consulta.
+# Prioridad: session_state (navegación por sidebar) > query params (enlace
+# directo desde la tarjeta de Predicción).
 fecha_consulta = st.session_state.get("consulta_fecha")
 horizonte = st.session_state.get("consulta_horizonte")
+
+if fecha_consulta is None:
+    fecha_param = st.query_params.get("fecha")
+    horizonte_param = st.query_params.get("horizonte")
+    if fecha_param and horizonte_param:
+        try:
+            fecha_consulta = date.fromisoformat(fecha_param)
+            horizonte = int(horizonte_param)
+        except (ValueError, TypeError):
+            # Si los parámetros son inválidos, los ignoramos.
+            fecha_consulta = None
+            horizonte = None
 
 if fecha_consulta is None:
     st.info(

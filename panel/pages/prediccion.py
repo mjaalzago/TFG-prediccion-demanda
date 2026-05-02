@@ -11,8 +11,8 @@ from datetime import date, timedelta
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-import holidays
 
+from utils.festivos import cargar_festivos
 from utils.clima import obtener_clima
 from utils.modelos import seleccionar_modelo
 from utils.datos import cargar_datos_historicos
@@ -98,19 +98,28 @@ if generar:
             (df_historico["fecha"].dt.date <= fecha_fin)
         ].copy()
 
-        # Festivos del país configurado en la ventana consultada.
-        # Se utiliza la misma fuente que el modelo Prophet usa internamente
-        # para los efectos de festivos.
-        pais = config["restaurante"]["pais"]
-        subdivision = config["restaurante"]["subdivision"]
-        festivos = holidays.country_holidays(
-            pais,
-            subdiv=subdivision,
-            years=range(fecha_inicio.year, fecha_fin.year + 1),
+        # Festivos del país y locales configurados en la ventana consultada.
+        # Se utiliza la misma función que el modelo Prophet usa en el
+        # entrenamiento, garantizando coherencia entre el modelo y el panel.
+        festivos_locales_config = [
+            (f["fecha"], f["nombre"])
+            for f in config["festivos_locales"]
+        ]
+
+        df_festivos = cargar_festivos(
+            pais_codigo=config["restaurante"]["pais"],
+            subdivision=config["restaurante"]["subdivision"],
+            años=range(fecha_inicio.year, fecha_fin.year + 1),
+            festivos_locales=festivos_locales_config or None,
         )
+
+        # Filtrar al periodo de la consulta y convertir a la lista de tuplas
+        # que ya espera el resto del código del fichero.
+        mask = (df_festivos["fecha"].dt.date >= fecha_inicio) & \
+            (df_festivos["fecha"].dt.date <= fecha_fin)
         festivos_periodo = [
-            (f, festivos[f]) for f in festivos
-            if fecha_inicio <= f <= fecha_fin
+            (row.fecha.date(), row.festivo_nombre)
+            for row in df_festivos[mask].itertuples()
         ]
 
     # Solo se muestran arriba las alertas reales (fecha muy alejada del
@@ -343,10 +352,12 @@ if generar:
         st.plotly_chart(fig_cal, width="stretch", key="calendario_heatmap")
 
         if festivos_periodo:
-            st.caption(
-                "Los días con el número en rojo en el calendario "
-                "corresponden a festivos."
-            )
+                    st.markdown(
+                        "<p style='text-align:center; color:#888; font-size:0.85rem; "
+                        "margin:0;'>Los días con el número en rojo en el calendario "
+                        "corresponden a festivos.</p>",
+                        unsafe_allow_html=True,
+                    )
 
     # ============================================================
     # Métricas resumidas
@@ -402,6 +413,11 @@ if generar:
     else:
         texto_margen = "Margen no estimable con fiabilidad"
 
+    # Tarjeta visual con la información de fiabilidad
+    # Construir URL del enlace con los parámetros de la consulta
+    fecha_param = fecha_inicio.strftime("%Y-%m-%d")
+    url_fiabilidad = f"/fiabilidad?fecha={fecha_param}&horizonte={horizonte}"
+
     st.markdown(
         f"""
         <div style='display:flex; align-items:center; gap:1rem;
@@ -413,7 +429,7 @@ if generar:
                 <strong style='color:{info['color']};'>{info['titulo']}</strong>
                 <span style='color:#555;'> · {texto_margen}</span>
             </div>
-            <a href='/fiabilidad' target='_self'
+            <a href='{url_fiabilidad}' target='_self'
             style='color:#3896b0; text-decoration:none; font-size:0.9rem;'>
                 Ver detalle ↗
             </a>

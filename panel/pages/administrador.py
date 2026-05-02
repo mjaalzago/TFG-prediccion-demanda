@@ -13,7 +13,8 @@ from datetime import date
 import pandas as pd
 import streamlit as st
 
-from utils.fiabilidad import (
+from utils.config import cargar_configuracion
+from utils.metricas import (
     INICIO_ENTRENAMIENTO,
     FIN_ENTRENAMIENTO,
 )
@@ -92,13 +93,30 @@ st.markdown(
     "validación cruzada sobre el conjunto de prueba."
 )
 
-# Datos de la tabla 11 del TFG
+# Datos de la tabla 11 leídos del fichero de configuración
+config = cargar_configuracion()
+
+m_pc = config["metricas"]["prophet_corto"]
+m_sc = config["metricas"]["sarima_corto"]
+m_pm = config["metricas"]["prophet_medio"]
+m_sm = config["metricas"]["sarima_medio"]
+
 df_metricas = pd.DataFrame({
     "Modelo": ["Prophet", "SARIMA", "Prophet", "SARIMA"],
-    "Horizonte": ["14 días", "14 días", "30 días", "30 días"],
-    "MAE": [6.54, 11.14, 7.25, 13.93],
-    "RMSE": [8.59, 13.66, 9.47, 16.75],
-    "MAPE (%)": [25.32, 58.44, 35.52, None],
+    "Horizonte": [
+        f"{m_pc['horizonte_dias']} días",
+        f"{m_sc['horizonte_dias']} días",
+        f"{m_pm['horizonte_dias']} días",
+        f"{m_sm['horizonte_dias']} días",
+    ],
+    "MAE": [m_pc["mae"], m_sc["mae"], m_pm["mae"], m_sm["mae"]],
+    "RMSE": [m_pc["rmse"], m_sc["rmse"], m_pm["rmse"], m_sm["rmse"]],
+    "MAPE (%)": [
+        m_pc.get("mape"),
+        m_sc.get("mape"),
+        m_pm.get("mape"),
+        m_sm.get("mape"),
+    ],
 })
 
 st.dataframe(

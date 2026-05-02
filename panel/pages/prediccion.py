@@ -16,7 +16,8 @@ import holidays
 from utils.clima import obtener_clima
 from utils.modelos import seleccionar_modelo
 from utils.datos import cargar_datos_historicos
-from utils.fiabilidad import (
+from utils.config import cargar_configuracion
+from utils.metricas import (
     calcular_nivel_fiabilidad,
     mae_segun_horizonte,
 )
@@ -58,6 +59,8 @@ if not generar:
 # Lógica de generación de la predicción
 if generar:
 
+    config = cargar_configuracion()
+
     with st.spinner("Generando predicción..."):
         # Selección del modelo según el horizonte
         modelo, nombre_modelo = seleccionar_modelo(horizonte)
@@ -95,30 +98,35 @@ if generar:
             (df_historico["fecha"].dt.date <= fecha_fin)
         ].copy()
 
-        # Festivos del Reino Unido (Inglaterra) en la ventana consultada.
+        # Festivos del país configurado en la ventana consultada.
         # Se utiliza la misma fuente que el modelo Prophet usa internamente
         # para los efectos de festivos.
-        festivos_uk = holidays.UnitedKingdom(
-            subdiv="ENG",
+        pais = config["restaurante"]["pais"]
+        subdivision = config["restaurante"]["subdivision"]
+        festivos = holidays.country_holidays(
+            pais,
+            subdiv=subdivision,
             years=range(fecha_inicio.year, fecha_fin.year + 1),
         )
         festivos_periodo = [
-            (f, festivos_uk[f]) for f in festivos_uk
+            (f, festivos[f]) for f in festivos
             if fecha_inicio <= f <= fecha_fin
         ]
 
     # Solo se muestran arriba las alertas reales (fecha muy alejada del
     # entrenamiento o fallback en la API de clima). El resto de información
     # de la consulta se agrupa al final en la caja "Detalles de la consulta".
-    fecha_fin_entrenamiento = date(2019, 8, 3)
+    fecha_fin_entrenamiento = config["modelo"]["fin_entrenamiento"]
     dias_desde_entrenamiento = (fecha_inicio - fecha_fin_entrenamiento).days
 
     if dias_desde_entrenamiento > 30:
         st.warning(
             f"La predicción se ha solicitado para una fecha que dista "
             f"{dias_desde_entrenamiento} días del final del periodo de "
-            f"entrenamiento del modelo (03/08/2019). Las predicciones para "
-            f"fechas muy alejadas del entrenamiento pueden perder fiabilidad."
+            f"entrenamiento del modelo "
+            f"({fecha_fin_entrenamiento.strftime('%d/%m/%Y')}). Las "
+            f"predicciones para fechas muy alejadas del entrenamiento "
+            f"pueden perder fiabilidad."
         )
 
     if mensaje_clima is not None and fuente_clima == "fallback":
@@ -220,6 +228,7 @@ if generar:
         st.plotly_chart(fig, width="stretch", key="grafico_lineas")
 
     with contenedor_calendario:
+        st.subheader("")
 
         # Construcción del DataFrame con la información del calendario
         df_cal = pd.DataFrame({
@@ -444,17 +453,68 @@ if generar:
 
         # Información sobre el periodo de entrenamiento
         if dias_desde_entrenamiento <= 0:
+            inicio = config["modelo"]["inicio_entrenamiento"]
+            fin = config["modelo"]["fin_entrenamiento"]
             st.markdown(
-                "**Periodo de entrenamiento:** La fecha consultada se "
-                "encuentra dentro del periodo de entrenamiento del modelo "
-                "(septiembre 2016 - agosto 2019). La predicción es un "
-                "ajuste in-sample, útil para validación visual y "
-                "comparación con los datos reales conocidos."
+                f"**Periodo de entrenamiento:** La fecha consultada se "
+                f"encuentra dentro del periodo de entrenamiento del modelo "
+                f"({inicio.strftime('%d/%m/%Y')} - "
+                f"{fin.strftime('%d/%m/%Y')}). La predicción es un ajuste "
+                f"in-sample, útil para validación visual y comparación con "
+                f"los datos reales conocidos."
             )
 
         # Información sobre la fuente de los datos meteorológicos
         if mensaje_clima is not None and fuente_clima != "fallback":
             st.markdown(f"**Datos meteorológicos:** {mensaje_clima}")
+
+        # Botón de exportación a CSV
+        st.divider()
+
+        # Construcción del DataFrame para exportar
+        DIAS_SEMANA_CSV = ["Lunes", "Martes", "Miércoles", "Jueves",
+                           "Viernes", "Sábado", "Domingo"]
+
+        df_export = pd.DataFrame({
+            "fecha": prediccion["ds"].dt.strftime("%d/%m/%Y"),
+            "dia_semana": prediccion["ds"].dt.dayofweek.map(
+                lambda d: DIAS_SEMANA_CSV[d]
+            ),
+            "pedidos_previstos": prediccion["yhat"].round().astype(int),
+            "minimo_esperable": prediccion["yhat_lower"].round().astype(int),
+            "maximo_esperable": prediccion["yhat_upper"].round().astype(int),
+        })
+
+        # Marcar festivos en el CSV
+        festivos_dict = {f[0]: f[1] for f in festivos_periodo}
+        df_export["es_festivo"] = prediccion["ds"].dt.date.map(
+            lambda d: "Sí" if d in festivos_dict else "No"
+        )
+        df_export["nombre_festivo"] = prediccion["ds"].dt.date.map(
+            lambda d: festivos_dict.get(d, "")
+        )
+
+        # Conversión a CSV con codificación UTF-8 con BOM (para que
+        # Excel en Windows lo abra correctamente con tildes y eñes)
+        csv_bytes = df_export.to_csv(
+            index=False,
+            sep=";",
+            encoding="utf-8-sig",
+        ).encode("utf-8-sig")
+
+        nombre_fichero = (
+            f"prediccion_demanda_"
+            f"{fecha_inicio.strftime('%Y-%m-%d')}_a_"
+            f"{fecha_fin.strftime('%Y-%m-%d')}.csv"
+        )
+
+        st.download_button(
+            label=":material/download: Exportar predicción a CSV",
+            data=csv_bytes,
+            file_name=nombre_fichero,
+            mime="text/csv",
+            width="stretch",
+        )
 
     # Guardamos la fecha y horizonte para que la página de Fiabilidad
     # pueda mostrar la información específica de esta consulta

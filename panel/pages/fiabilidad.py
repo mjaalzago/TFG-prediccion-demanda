@@ -4,10 +4,9 @@ Vista orientada al gestor: explica de forma no técnica el grado
 de confianza de las predicciones que ofrece el sistema.
 """
 
-from datetime import date
 import streamlit as st
 
-from utils.fiabilidad import (
+from utils.metricas import (
     INICIO_ENTRENAMIENTO,
     FIN_ENTRENAMIENTO,
     MAE_CORTO,
@@ -17,69 +16,6 @@ from utils.fiabilidad import (
     calcular_nivel_fiabilidad,
     mae_segun_horizonte,
 )
-
-
-# ---------------------------------------------------------------
-# Parámetros de la página (centralizados para fácil ajuste)
-# ---------------------------------------------------------------
-
-# Fin del periodo de entrenamiento del modelo
-FIN_ENTRENAMIENTO = date(2019, 8, 3)
-INICIO_ENTRENAMIENTO = date(2016, 9, 1)
-
-# Margen de error medio del sistema (de la tabla 11 del TFG)
-MAE_CORTO = 6.54   # 14 días
-MAE_MEDIO = 7.25   # 30 días
-
-# Umbrales del semáforo en días desde el fin del entrenamiento
-# Pendiente de decidir definitivamente. Cambiar aquí cuando se acuerde.
-UMBRAL_VERDE = 30    # hasta 30 días del fin: fiabilidad alta
-UMBRAL_AMBAR = 180   # entre 30 y 180 días: fiabilidad media
-                     # más de 180: fiabilidad baja
-
-
-# ---------------------------------------------------------------
-# Lógica del semáforo
-# ---------------------------------------------------------------
-
-def calcular_nivel_fiabilidad(fecha_consulta: date) -> dict:
-    """
-    Devuelve el nivel de fiabilidad para una fecha de consulta.
-    """
-    if INICIO_ENTRENAMIENTO <= fecha_consulta <= FIN_ENTRENAMIENTO:
-        dias_desde_fin = 0
-        dentro_periodo = True
-    else:
-        dias_desde_fin = (fecha_consulta - FIN_ENTRENAMIENTO).days
-        dentro_periodo = False
-
-    if dentro_periodo or dias_desde_fin <= UMBRAL_VERDE:
-        return {
-            "nivel": "alta",
-            "color": "#2ecc71",
-            "icono": ":material/check_circle:",
-            "titulo": "Fiabilidad alta",
-            "dias_desde_fin": dias_desde_fin,
-            "dentro_periodo": dentro_periodo,
-        }
-    elif dias_desde_fin <= UMBRAL_AMBAR:
-        return {
-            "nivel": "media",
-            "color": "#f39c12",
-            "icono": ":material/warning:",
-            "titulo": "Fiabilidad media",
-            "dias_desde_fin": dias_desde_fin,
-            "dentro_periodo": False,
-        }
-    else:
-        return {
-            "nivel": "baja",
-            "color": "#e74c3c",
-            "icono": ":material/error:",
-            "titulo": "Fiabilidad baja",
-            "dias_desde_fin": dias_desde_fin,
-            "dentro_periodo": False,
-        }
 
 
 # ---------------------------------------------------------------

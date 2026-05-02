@@ -14,16 +14,13 @@ import streamlit as st
 
 from utils.clima import obtener_clima
 from utils.modelos import seleccionar_modelo
+from utils.fiabilidad import (
+    calcular_nivel_fiabilidad,
+    mae_segun_horizonte,
+)
 
 # Encabezado de la página
 st.title("Predicción de demanda")
-#st.markdown(
-#    "Consulta las predicciones de demanda para los próximos días con su "
-#    "intervalo de confianza al 95%."
-#)
-
-#st.markdown("---")
-
 
 # Configuración de la consulta en el sidebar
 with st.sidebar:
@@ -98,7 +95,7 @@ if generar:
             f"Los escenarios operativos validados son de 14 días (corto plazo) "
             f"y 30 días (medio plazo) desde el final del entrenamiento."
         )
-    
+
     # Aviso si la fecha está dentro del periodo de entrenamiento
     if dias_desde_entrenamiento <= 0:
         st.info(
@@ -117,7 +114,7 @@ if generar:
         else:  # 'historico' o 'forecast'
             st.caption(f"ℹ️ {mensaje_clima}")
 
-    # Construcción del gráfico interactivo con Plotly
+    # Construcción del gráfico interactivo de líneas con Plotly
     fig = go.Figure()
 
     # Banda del intervalo de confianza
@@ -177,90 +174,94 @@ if generar:
         ),
     )
 
-    st.plotly_chart(fig, width="stretch", key="calendario_heatmap")
-
     # ============================================================
-    # Calendario heatmap de la predicción
+    # Visualización en dos columnas: gráfico de líneas y calendario
     # ============================================================
-    st.subheader("Vista de calendario")
+    col_grafico, col_calendario = st.columns(2)
 
-    # Construcción del DataFrame con la información del calendario
-    df_cal = pd.DataFrame({
-        "fecha": prediccion["ds"],
-        "pedidos": prediccion["yhat"].round().astype(int),
-    })
-    df_cal["dia_semana"] = df_cal["fecha"].dt.dayofweek  # Lunes=0, Domingo=6
-    df_cal["semana"] = df_cal["fecha"].dt.isocalendar().week
-    df_cal["dia_mes"] = df_cal["fecha"].dt.day
-    df_cal["mes_anio"] = df_cal["fecha"].dt.strftime("%B %Y")
+    with col_grafico:
+        st.plotly_chart(fig, width="stretch", key="grafico_lineas")
 
-    # Reorganización para el heatmap: filas = semanas, columnas = días
-    semanas_unicas = sorted(df_cal["semana"].unique())
-    dias_orden = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+    with col_calendario:
+        st.subheader("")
 
-    # Matriz de pedidos (semanas × días)
-    matriz_pedidos = []
-    matriz_etiquetas = []
-    matriz_textos = []
+        # Construcción del DataFrame con la información del calendario
+        df_cal = pd.DataFrame({
+            "fecha": prediccion["ds"],
+            "pedidos": prediccion["yhat"].round().astype(int),
+        })
+        df_cal["dia_semana"] = df_cal["fecha"].dt.dayofweek  # Lunes=0, Domingo=6
+        df_cal["semana"] = df_cal["fecha"].dt.isocalendar().week
+        df_cal["dia_mes"] = df_cal["fecha"].dt.day
+        df_cal["mes_anio"] = df_cal["fecha"].dt.strftime("%B %Y")
 
-    for semana in semanas_unicas:
-        fila_pedidos = []
-        fila_etiquetas = []
-        fila_textos = []
-        for dia in range(7):
-            registro = df_cal[(df_cal["semana"] == semana) & (df_cal["dia_semana"] == dia)]
-            if len(registro) > 0:
-                fecha_dia = registro["fecha"].iloc[0]
-                pedidos = registro["pedidos"].iloc[0]
-                fila_pedidos.append(pedidos)
-                fila_etiquetas.append(
-                    f"<b>{fecha_dia.strftime('%d/%m')}</b><br>{pedidos} pedidos"
-                )
-                fila_textos.append(f"{fecha_dia.day}<br><b>{pedidos}</b>")
-            else:
-                fila_pedidos.append(None)
-                fila_etiquetas.append("")
-                fila_textos.append("")
-        matriz_pedidos.append(fila_pedidos)
-        matriz_etiquetas.append(fila_etiquetas)
-        matriz_textos.append(fila_textos)
+        # Reorganización para el heatmap: filas = semanas, columnas = días
+        semanas_unicas = sorted(df_cal["semana"].unique())
+        dias_orden = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
-    # Construcción del heatmap con Plotly
-    fig_cal = go.Figure(
-        data=go.Heatmap(
-            z=matriz_pedidos,
-            x=dias_orden,
-            y=[f"Semana {s}" for s in semanas_unicas],
-            text=matriz_textos,
-            texttemplate="%{text}",
-            textfont={"size": 13, "color": "#1f3a5f"},
-            customdata=matriz_etiquetas,
-            hovertemplate="%{customdata}<extra></extra>",
-            colorscale=[
-                [0.0, "#e6f4f7"],
-                [0.5, "#7fc5d4"],
-                [1.0, "#0097b2"],
-            ],
-            colorbar=dict(
-                title=dict(
-                    text="Pedidos",
-                    side="right",
+        # Matriz de pedidos (semanas × días)
+        matriz_pedidos = []
+        matriz_etiquetas = []
+        matriz_textos = []
+
+        for semana in semanas_unicas:
+            fila_pedidos = []
+            fila_etiquetas = []
+            fila_textos = []
+            for dia in range(7):
+                registro = df_cal[(df_cal["semana"] == semana) & (df_cal["dia_semana"] == dia)]
+                if len(registro) > 0:
+                    fecha_dia = registro["fecha"].iloc[0]
+                    pedidos = registro["pedidos"].iloc[0]
+                    fila_pedidos.append(pedidos)
+                    fila_etiquetas.append(
+                        f"<b>{fecha_dia.strftime('%d/%m')}</b><br>{pedidos} pedidos"
+                    )
+                    fila_textos.append(f"{fecha_dia.day}<br><b>{pedidos}</b>")
+                else:
+                    fila_pedidos.append(None)
+                    fila_etiquetas.append("")
+                    fila_textos.append("")
+            matriz_pedidos.append(fila_pedidos)
+            matriz_etiquetas.append(fila_etiquetas)
+            matriz_textos.append(fila_textos)
+
+        # Construcción del heatmap con Plotly
+        fig_cal = go.Figure(
+            data=go.Heatmap(
+                z=matriz_pedidos,
+                x=dias_orden,
+                y=[f"Semana {s}" for s in semanas_unicas],
+                text=matriz_textos,
+                texttemplate="%{text}",
+                textfont={"size": 13, "color": "#1f3a5f"},
+                customdata=matriz_etiquetas,
+                hovertemplate="%{customdata}<extra></extra>",
+                colorscale=[
+                    [0.0, "#e6f4f7"],
+                    [0.5, "#7fc5d4"],
+                    [1.0, "#0097b2"],
+                ],
+                colorbar=dict(
+                    title=dict(
+                        text="Pedidos",
+                        side="right",
+                    ),
                 ),
-            ),
-            xgap=3,
-            ygap=3,
+                xgap=3,
+                ygap=3,
+            )
         )
-    )
 
-    fig_cal.update_layout(
-        height=max(180, len(semanas_unicas) * 70),
-        margin=dict(l=10, r=10, t=10, b=10),
-        xaxis=dict(side="top", tickfont=dict(size=12)),
-        yaxis=dict(tickfont=dict(size=11), autorange="reversed"),
-        plot_bgcolor="white",
-    )
+        fig_cal.update_layout(
+            height=max(180, len(semanas_unicas) * 70),
+            margin=dict(l=10, r=10, t=10, b=10),
+            xaxis=dict(side="top", tickfont=dict(size=12)),
+            yaxis=dict(tickfont=dict(size=11), autorange="reversed"),
+            plot_bgcolor="white",
+        )
 
-    st.plotly_chart(fig_cal, width="stretch", key="grafico_lineas")
+        st.plotly_chart(fig_cal, width="stretch", key="calendario_heatmap")
 
     # ============================================================
     # Métricas resumidas
@@ -288,9 +289,47 @@ if generar:
             help=f"El día {prediccion.loc[prediccion['yhat'].idxmax(), 'ds'].strftime('%d/%m/%Y')}",
         )
 
-        # Resultado: información del modelo utilizado
+    # ---------------------------------------------------------------
+    # Tarjeta compacta de fiabilidad
+    # ---------------------------------------------------------------
+
+    info = calcular_nivel_fiabilidad(fecha_inicio)
+    mae = mae_segun_horizonte(horizonte)
+
+    if info["nivel"] == "alta":
+        texto_margen = f"Margen ±{mae:.1f} pedidos/día"
+    elif info["nivel"] == "media":
+        texto_margen = f"Margen ±{mae:.1f} pedidos/día (mínimo)"
+    else:
+        texto_margen = "Margen no estimable con fiabilidad"
+
+    st.markdown(
+        f"""
+        <div style='display:flex; align-items:center; gap:1rem;
+                    padding:0.75rem 1rem; background:{info['color']}15;
+                    border-left:4px solid {info['color']};
+                    border-radius:6px; margin: 0.5rem 0;'>
+            <span style='font-size:1.2rem; color:{info['color']};'>●</span>
+            <div style='flex:1;'>
+                <strong style='color:{info['color']};'>{info['titulo']}</strong>
+                <span style='color:#555;'> · {texto_margen}</span>
+            </div>
+            <a href='/fiabilidad' target='_self'
+            style='color:#3896b0; text-decoration:none; font-size:0.9rem;'>
+                Ver detalle ↗
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Mensaje de éxito al final
     st.success(
         f"Predicción generada con el modelo de **{nombre_modelo}** "
         f"para el periodo del {fecha_inicio.strftime('%d/%m/%Y')} al "
         f"{fechas[-1].strftime('%d/%m/%Y')}."
     )
+
+    # guardamos tanto la fecha como el horizonte para que se pueda utilizar desde fiabilidad
+    st.session_state["consulta_fecha"] = fecha_inicio
+    st.session_state["consulta_horizonte"] = horizonte

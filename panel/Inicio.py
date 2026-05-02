@@ -67,6 +67,11 @@ paginas = [
         title="Fiabilidad del modelo",
         icon=":material/verified:",
     ),
+    st.Page(
+        "pages/administrador.py",
+        title="Administrador",
+        icon=":material/settings:",
+    ),    
 ]
 
 # Navegación principal

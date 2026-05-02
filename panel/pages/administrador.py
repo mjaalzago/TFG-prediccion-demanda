@@ -1,0 +1,173 @@
+"""
+Página de Administrador.
+
+Vista técnica orientada al perfil de administrador del sistema.
+Muestra información sobre los modelos entrenados y las métricas
+de evaluación comparativa frente al modelo de referencia.
+
+Cubre los requisitos RF06, RF07, RF11 y el caso de uso CU03.
+"""
+
+from datetime import date
+
+import pandas as pd
+import streamlit as st
+
+from utils.fiabilidad import (
+    INICIO_ENTRENAMIENTO,
+    FIN_ENTRENAMIENTO,
+)
+
+
+# ===============================================================
+# Encabezado
+# ===============================================================
+
+st.title("Administrador")
+st.markdown(
+    "Vista técnica del sistema con información sobre los modelos "
+    "entrenados y sus métricas de evaluación."
+)
+
+# ===============================================================
+# BLOQUE A: información del modelo
+# ===============================================================
+
+st.header("Modelos entrenados")
+
+col_corto, col_medio = st.columns(2)
+
+with col_corto.container(border=True):
+    st.markdown("##### Modelo de corto plazo")
+    st.markdown(
+        f"""
+        - **Algoritmo:** Prophet (Meta)
+        - **Horizonte:** 14 días
+        - **Regresores externos:** precipitación total, viento medio
+        - **Estacionalidades:** semanal, anual
+        - **Festivos:** habilitados (calendario nacional)
+        """
+    )
+
+with col_medio.container(border=True):
+    st.markdown("##### Modelo de medio plazo")
+    st.markdown(
+        f"""
+        - **Algoritmo:** Prophet (Meta)
+        - **Horizonte:** 30 días
+        - **Regresores externos:** ninguno
+        - **Estacionalidades:** semanal, anual
+        - **Festivos:** habilitados (calendario nacional)
+        """
+    )
+
+st.subheader("Periodo de entrenamiento")
+st.markdown(
+    f"Los modelos se han entrenado con datos reales de pedidos "
+    f"registrados entre el "
+    f"**{INICIO_ENTRENAMIENTO.strftime('%d/%m/%Y')}** y el "
+    f"**{FIN_ENTRENAMIENTO.strftime('%d/%m/%Y')}**."
+)
+
+st.subheader("Modelo de referencia")
+st.markdown(
+    "Para validar el rendimiento del modelo principal se ha "
+    "implementado un modelo de referencia basado en SARIMA "
+    "(*Seasonal ARIMA*), un enfoque estadístico clásico ampliamente "
+    "utilizado en predicción de series temporales. La comparativa "
+    "permite cuantificar la aportación de las variables contextuales "
+    "externas que utiliza Prophet frente al enfoque clásico."
+)
+
+st.divider()
+
+# ===============================================================
+# BLOQUE B: métricas comparativas (Tabla 11 del TFG)
+# ===============================================================
+
+st.header("Métricas de evaluación comparativa")
+st.markdown(
+    "Comparación de las métricas de error entre el modelo principal "
+    "(Prophet) y el modelo de referencia (SARIMA), evaluadas mediante "
+    "validación cruzada sobre el conjunto de prueba."
+)
+
+# Datos de la tabla 11 del TFG
+df_metricas = pd.DataFrame({
+    "Modelo": ["Prophet", "SARIMA", "Prophet", "SARIMA"],
+    "Horizonte": ["14 días", "14 días", "30 días", "30 días"],
+    "MAE": [6.54, 11.14, 7.25, 13.93],
+    "RMSE": [8.59, 13.66, 9.47, 16.75],
+    "MAPE (%)": [25.32, 58.44, 35.52, None],
+})
+
+st.dataframe(
+    df_metricas,
+    width="stretch",
+    hide_index=True,
+    column_config={
+        "MAE": st.column_config.NumberColumn(format="%.2f"),
+        "RMSE": st.column_config.NumberColumn(format="%.2f"),
+        "MAPE (%)": st.column_config.NumberColumn(format="%.2f"),
+    },
+)
+
+st.caption(
+    "MAE: Error absoluto medio · RMSE: Raíz del error cuadrático "
+    "medio · MAPE: Error porcentual absoluto medio. "
+    "El valor MAPE de SARIMA a 30 días se ha omitido por la "
+    "presencia de valores próximos a cero en la serie real, que "
+    "generan distorsiones porcentuales no representativas."
+)
+
+st.subheader("Lectura de los resultados")
+st.markdown(
+    "El modelo Prophet supera al modelo de referencia SARIMA en "
+    "todas las métricas evaluadas y en ambos horizontes. La mejora "
+    "es especialmente significativa en el MAPE a 14 días, donde "
+    "Prophet reduce el error porcentual a menos de la mitad. Estos "
+    "resultados confirman la aportación de las variables contextuales "
+    "externas (clima) que utiliza Prophet frente al enfoque "
+    "puramente endógeno de SARIMA."
+)
+
+# ===============================================================
+# BLOQUE C: visualizaciones comparativas
+# ===============================================================
+
+st.divider()
+
+st.header("Visualización comparativa")
+st.markdown(
+    "A continuación se muestran las predicciones de Prophet y SARIMA "
+    "sobre el último fold de la validación cruzada, en los dos "
+    "escenarios operativos del sistema. Las gráficas permiten "
+    "apreciar visualmente el comportamiento de ambos modelos frente "
+    "a la demanda real."
+)
+
+st.subheader("Escenario de corto plazo (14 días)")
+st.markdown(
+    "Para Prophet se utiliza el modelo de corto plazo, que incluye "
+    "festivos y los regresores meteorológicos seleccionados "
+    "(precipitación y viento en ventana de servicio). Para SARIMA "
+    "se utiliza el modelo seleccionado por *auto_arima*, sin "
+    "regresores externos."
+)
+st.image(
+    "panel/assets/figura_comparativa_corto_plazo.png",
+    width="stretch",
+)
+
+st.subheader("Escenario de medio plazo (30 días)")
+st.markdown(
+    "Para Prophet se utiliza el modelo de medio plazo, que incluye "
+    "festivos pero prescinde de los regresores meteorológicos, dado "
+    "que las previsiones del clima no son fiables más allá de 14 "
+    "días. La degradación del modelo SARIMA es notablemente más "
+    "acusada en este horizonte."
+)
+st.image(
+    "panel/assets/figura_comparativa_medio_plazo.png",
+    width="stretch",
+)

@@ -82,7 +82,9 @@ if generar:
         # Generación de la predicción
         prediccion = modelo.predict(df_futuro)
 
-    # Aviso si la fecha está fuera del horizonte recomendado
+    # Solo se muestran arriba las alertas reales (fecha muy alejada del
+    # entrenamiento o fallback en la API de clima). El resto de información
+    # de la consulta se agrupa al final en la caja "Detalles de la consulta".
     fecha_fin_entrenamiento = date(2019, 8, 3)
     dias_desde_entrenamiento = (fecha_inicio - fecha_fin_entrenamiento).days
 
@@ -91,28 +93,11 @@ if generar:
             f"La predicción se ha solicitado para una fecha que dista "
             f"{dias_desde_entrenamiento} días del final del periodo de "
             f"entrenamiento del modelo (03/08/2019). Las predicciones para "
-            f"fechas muy alejadas del entrenamiento pueden perder fiabilidad. "
-            f"Los escenarios operativos validados son de 14 días (corto plazo) "
-            f"y 30 días (medio plazo) desde el final del entrenamiento."
+            f"fechas muy alejadas del entrenamiento pueden perder fiabilidad."
         )
 
-    # Aviso si la fecha está dentro del periodo de entrenamiento
-    if dias_desde_entrenamiento <= 0:
-        st.info(
-            "La fecha solicitada se encuentra dentro del periodo de "
-            "entrenamiento del modelo (septiembre 2016 - agosto 2019). "
-            "La predicción mostrada es un ajuste in-sample del modelo, útil "
-            "para validación visual y comparación con los datos reales conocidos."
-        )
-
-    # Información sobre la fuente de los datos meteorológicos
-    if mensaje_clima is not None:
-        if fuente_clima == "fallback":
-            st.warning(mensaje_clima)
-        elif fuente_clima == "estacional":
-            st.info(mensaje_clima)
-        else:  # 'historico' o 'forecast'
-            st.caption(f"ℹ️ {mensaje_clima}")
+    if mensaje_clima is not None and fuente_clima == "fallback":
+        st.warning(mensaje_clima)
 
     # Construcción del gráfico interactivo de líneas con Plotly
     fig = go.Figure()
@@ -159,7 +144,7 @@ if generar:
 
     # Configuración visual del gráfico
     fig.update_layout(
-        title=f"Predicción de pedidos diarios - Horizonte de {horizonte} días",
+        #title=f"Predicción de pedidos diarios - Horizonte de {horizonte} días",
         xaxis_title="Fecha",
         yaxis_title="Pedidos previstos",
         hovermode="x unified",
@@ -175,15 +160,27 @@ if generar:
     )
 
     # ============================================================
-    # Visualización en dos columnas: gráfico de líneas y calendario
+    # Visualización: layout adaptativo según el horizonte
+    # Para 14 días: dos columnas (gráfico izquierda + calendario derecha)
+    # Para 30 días: vertical (gráfico arriba, calendario debajo)
     # ============================================================
-    col_grafico, col_calendario = st.columns(2)
 
-    with col_grafico:
+    st.markdown(f"Predicción diaria - Horizonte de {horizonte} días")
+
+    if horizonte == 14:
+        col_grafico, col_calendario = st.columns(2)
+        contenedor_grafico = col_grafico
+        contenedor_calendario = col_calendario
+    else:
+        contenedor_grafico = st.container()
+        contenedor_calendario = st.container()
+
+    with contenedor_grafico:
+        #st.subheader(f"Predicción diaria - Horizonte de {horizonte} días")
         st.plotly_chart(fig, width="stretch", key="grafico_lineas")
 
-    with col_calendario:
-        st.subheader("")
+    with contenedor_calendario:
+        #st.subheader("Vista por día de la semana")
 
         # Construcción del DataFrame con la información del calendario
         df_cal = pd.DataFrame({
@@ -289,7 +286,7 @@ if generar:
             help=f"El día {prediccion.loc[prediccion['yhat'].idxmax(), 'ds'].strftime('%d/%m/%Y')}",
         )
 
-    # ---------------------------------------------------------------
+# ---------------------------------------------------------------
     # Tarjeta compacta de fiabilidad
     # ---------------------------------------------------------------
 
@@ -323,13 +320,40 @@ if generar:
         unsafe_allow_html=True,
     )
 
-    # Mensaje de éxito al final
-    st.success(
-        f"Predicción generada con el modelo de **{nombre_modelo}** "
-        f"para el periodo del {fecha_inicio.strftime('%d/%m/%Y')} al "
-        f"{fechas[-1].strftime('%d/%m/%Y')}."
-    )
+    # ---------------------------------------------------------------
+    # Caja con los detalles informativos de la consulta
+    # ---------------------------------------------------------------
 
-    # guardamos tanto la fecha como el horizonte para que se pueda utilizar desde fiabilidad
+    with st.expander("Detalles de la consulta", expanded=False):
+
+        # Modelo y periodo
+        st.markdown(
+            f"**Modelo utilizado:** {nombre_modelo}  \n"
+            f"**Periodo predicho:** del "
+            f"{fecha_inicio.strftime('%d/%m/%Y')} al "
+            f"{fechas[-1].strftime('%d/%m/%Y')}"
+        )
+
+        # Información sobre el periodo de entrenamiento
+        if dias_desde_entrenamiento <= 0:
+            st.markdown(
+                "**Periodo de entrenamiento:** La fecha consultada se "
+                "encuentra dentro del periodo de entrenamiento del modelo "
+                "(septiembre 2016 - agosto 2019). La predicción es un "
+                "ajuste in-sample, útil para validación visual y "
+                "comparación con los datos reales conocidos."
+            )
+
+        # Información sobre la fuente de los datos meteorológicos
+        if mensaje_clima is not None and fuente_clima != "fallback":
+            st.markdown(f"**Datos meteorológicos:** {mensaje_clima}")
+
+    # Guardamos la fecha y horizonte para que la página de Fiabilidad
+    # pueda mostrar la información específica de esta consulta
+    st.session_state["consulta_fecha"] = fecha_inicio
+    st.session_state["consulta_horizonte"] = horizonte
+
+    # Guardamos la fecha y horizonte para que la página de Fiabilidad
+    # pueda mostrar la información específica de esta consulta
     st.session_state["consulta_fecha"] = fecha_inicio
     st.session_state["consulta_horizonte"] = horizonte

@@ -3,7 +3,7 @@ Página de consulta de predicciones de demanda.
 
 Permite seleccionar una fecha de inicio y un horizonte de predicción
 desde el panel lateral y muestra la predicción correspondiente con el
-intervalo de confianza al 95% en la zona principal.
+intervalo de confianza al 95%.
 """
 
 from datetime import date, timedelta
@@ -123,7 +123,7 @@ if generar:
         ]
 
     # Solo se muestran arriba las alertas reales (fecha muy alejada del
-    # entrenamiento o fallback en la API de clima). El resto de información
+    # entrenamiento o la API de clima no da respuesta). El resto de información
     # de la consulta se agrupa al final en la caja "Detalles de la consulta".
     fecha_fin_entrenamiento = config["modelo"]["fin_entrenamiento"]
     dias_desde_entrenamiento = (fecha_inicio - fecha_fin_entrenamiento).days
@@ -217,11 +217,11 @@ if generar:
         ),
     )
 
-    # ============================================================
-    # Visualización: layout adaptativo según el horizonte
+    # 
+    # Visualización del panel:
     # Para 14 días: dos columnas (gráfico izquierda + calendario derecha)
     # Para 30 días: vertical (gráfico arriba, calendario debajo)
-    # ============================================================
+    # 
 
     st.markdown(f"#### Predicción diaria - Horizonte de {horizonte} días")
 
@@ -298,7 +298,7 @@ if generar:
                             f"<b>{fecha_dia.strftime('%d/%m')}</b><br>{pedidos} pedidos"
                         )
 
-                    # Texto en la celda: número del día en rojo y negrita si es festivo
+                    # Texto en la celda (número del día en rojo y negrita si es festivo)
                     if es_festivo:
                         fila_textos.append(
                             f"<b><span style='color:#e74c3c'>{fecha_dia.day}</span></b>"
@@ -352,16 +352,15 @@ if generar:
         st.plotly_chart(fig_cal, width="stretch", key="calendario_heatmap")
 
         if festivos_periodo:
-                    st.markdown(
-                        "<p style='text-align:center; color:#888; font-size:0.85rem; "
-                        "margin:0;'>Los días con el número en rojo en el calendario "
-                        "corresponden a festivos.</p>",
-                        unsafe_allow_html=True,
-                    )
-
-    # ============================================================
+            st.markdown(
+                "<p style='text-align:center; color:#888; font-size:0.85rem; "
+                "margin:0;'>Los días con el número en rojo en el calendario "
+                "corresponden a festivos.</p>",
+                unsafe_allow_html=True,
+            )
+    #
     # Métricas resumidas
-    # ============================================================
+    #
     st.subheader("Resumen de la predicción")
 
     col_m1, col_m2, col_m3 = st.columns(3)
@@ -399,10 +398,8 @@ if generar:
         )
         st.caption(fecha_formateada.capitalize())
 
-    # ---------------------------------------------------------------
+    # -
     # Tarjeta compacta de fiabilidad
-    # ---------------------------------------------------------------
-
     info = calcular_nivel_fiabilidad(fecha_inicio)
     mae = mae_segun_horizonte(horizonte)
 
@@ -414,7 +411,7 @@ if generar:
         texto_margen = "Margen no estimable con fiabilidad"
 
     # Tarjeta visual con la información de fiabilidad
-    # Construir URL del enlace con los parámetros de la consulta
+    # URL del enlace con los parámetros de la consulta
     fecha_param = fecha_inicio.strftime("%Y-%m-%d")
     url_fiabilidad = f"/fiabilidad?fecha={fecha_param}&horizonte={horizonte}"
 
@@ -438,10 +435,8 @@ if generar:
         unsafe_allow_html=True,
     )
 
-    # ---------------------------------------------------------------
+    # 
     # Caja con los detalles informativos de la consulta
-    # ---------------------------------------------------------------
-
     with st.expander("Detalles de la consulta", expanded=False):
 
         # Modelo y periodo
@@ -476,7 +471,7 @@ if generar:
                 f"encuentra dentro del periodo de entrenamiento del modelo "
                 f"({inicio.strftime('%d/%m/%Y')} - "
                 f"{fin.strftime('%d/%m/%Y')}). La predicción es un ajuste "
-                f"in-sample, útil para validación visual y comparación con "
+                f"en los datos de entrenamiento, útil para validación visual y comparación con "
                 f"los datos reales conocidos."
             )
 
@@ -511,7 +506,7 @@ if generar:
         )
 
         # Conversión a CSV con codificación UTF-8 con BOM (para que
-        # Excel en Windows lo abra correctamente con tildes y eñes)
+        # Excel en Windows lo abra correctamente con tildes y eñes).
         csv_bytes = df_export.to_csv(
             index=False,
             sep=";",
@@ -533,6 +528,6 @@ if generar:
         )
 
     # Guardamos la fecha y horizonte para que la página de Fiabilidad
-    # pueda mostrar la información específica de esta consulta
+    # pueda mostrar la información específica de esta consulta-
     st.session_state["consulta_fecha"] = fecha_inicio
     st.session_state["consulta_horizonte"] = horizonte

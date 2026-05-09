@@ -8,8 +8,7 @@ import pandas as pd
 import streamlit as st
 
 
-# Ruta al dataset relativa al fichero, robusta independientemente
-# del directorio desde el que se lance Streamlit.
+# Ruta al dataset relativa al fichero
 RUTA_DATOS = Path(__file__).parent.parent.parent / "data" / "processed"
 
 
@@ -17,8 +16,8 @@ RUTA_DATOS = Path(__file__).parent.parent.parent / "data" / "processed"
 def cargar_datos_historicos() -> pd.DataFrame:
     """
     Carga el dataset histórico enriquecido de pedidos reales con sus
-    variables contextuales (clima, festivos). El resultado se cachea
-    en memoria para evitar lecturas repetidas durante la sesión.
+    variables contextuales (clima, festivos). 
+    Se cachea para evitar lecturas repetidas del fichero.
 
     Devuelve un DataFrame con columnas 'fecha' (datetime) y 'n_pedidos'
     (entero), entre otras.

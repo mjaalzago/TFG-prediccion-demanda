@@ -1,17 +1,16 @@
 """
 Métricas y lógica de fiabilidad del modelo.
 
-Este módulo expone las métricas de evaluación de los modelos
+Este módulo muestra las métricas de evaluación de los modelos
 (MAE, umbrales del semáforo) y la lógica de cálculo del nivel
 de fiabilidad de las predicciones según la fecha consultada.
 
 Las constantes y umbrales se leen del fichero config.toml mediante
-el módulo utils.config, lo que permite que los cambios en la
-configuración se reflejen sin reiniciar el panel.
+el módulo utils.config.
 
-Es usado tanto por la página de Predicción (tarjeta compacta de
-fiabilidad) como por la página de Fiabilidad (vista completa para
-el gestor) y la página de Administrador (información de modelos).
+Se usa en la página de Predicción (en la tarjeta compacta de
+fiabilidad) y en la página de Fiabilidad  
+y la página de Administrador (información de modelos).
 """
 
 from datetime import date
@@ -19,20 +18,16 @@ from datetime import date
 from utils.config import cargar_configuracion
 
 
-# ---------------------------------------------------------------
+# 
 # Acceso a la configuración
-# ---------------------------------------------------------------
-
 def _get_config():
     """Devuelve la configuración actual del panel."""
     return cargar_configuracion()
 
 
-# Constantes que sí pueden vivir a nivel de módulo porque no
-# dependen de la configuración: son fechas que se exponen para
-# que otros módulos las importen, pero internamente todo se lee
-# del config.
-
+# Estos valores se obtienen dinámicamente desde la configuración, 
+# se definen como atributos del módulo para simplificar su uso 
+# y desacoplar el resto del sistema de la fuente de datos.
 def _inicio_entrenamiento() -> date:
     return _get_config()["modelo"]["inicio_entrenamiento"]
 
@@ -41,10 +36,9 @@ def _fin_entrenamiento() -> date:
     return _get_config()["modelo"]["fin_entrenamiento"]
 
 
-# Para mantener la compatibilidad con código que importa estas
-# constantes directamente, las exponemos como properties del módulo
-# mediante __getattr__ a nivel de módulo (PEP 562, Python 3.7+).
-
+# Para mantener la compatibilidad con el código existente, 
+# estos valores se definen como atributos del módulo,
+# permitiendo obtenerlos dinámicamente desde la configuración
 def __getattr__(name):
     """
     Permite acceder a INICIO_ENTRENAMIENTO y FIN_ENTRENAMIENTO
@@ -64,13 +58,11 @@ def __getattr__(name):
         return config["fiabilidad"]["umbral_verde_dias"]
     if name == "UMBRAL_AMBAR":
         return config["fiabilidad"]["umbral_ambar_dias"]
-    raise AttributeError(f"module 'utils.fiabilidad' has no attribute {name!r}")
+    raise AttributeError(f"module 'utils.metricas' has no attribute {name!r}")
 
 
-# ---------------------------------------------------------------
+# 
 # Lógica del semáforo
-# ---------------------------------------------------------------
-
 def calcular_nivel_fiabilidad(fecha_consulta: date) -> dict:
     """
     Devuelve el nivel de fiabilidad para una fecha de consulta.

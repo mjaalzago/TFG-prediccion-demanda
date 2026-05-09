@@ -1,17 +1,16 @@
 """
 Obtención de datos meteorológicos desde la API de Open-Meteo.
 
-Implementa una lógica condicional que selecciona la fuente de datos
-apropiada en función de la fecha solicitada:
+Dependiendo de la fecha, se slecciona la fuente de datos:
 
 - Fechas pasadas: API histórica (datos meteorológicos reales).
 - Fechas en los próximos 16 días: API de forecast (previsión real).
-- Fechas a más de 16 días en el futuro: valores medios estacionales.
+- Fechas a más de 16 días en el futuro: valores medios configurados.
 
-En caso de fallo de la API, se utilizan valores medios de fallback
+En caso de fallo de la API, se utilizan valores medios
 y se notifica al usuario.
 
-La ubicación geográfica y los valores de fallback se leen del fichero
+La ubicación geográfica y los valores medios se leen del fichero
 de configuración (config.toml), lo que permite adaptar el panel a
 distintos restaurantes sin modificar el código.
 """
@@ -25,7 +24,7 @@ import streamlit as st
 from utils.config import cargar_configuracion
 
 
-# Endpoints fijos de la API de Open-Meteo
+# URLs de la API de Open-Meteo
 URL_HISTORICA = "https://archive-api.open-meteo.com/v1/archive"
 URL_FORECAST = "https://api.open-meteo.com/v1/forecast"
 
@@ -36,7 +35,7 @@ URL_FORECAST = "https://api.open-meteo.com/v1/forecast"
 VARIABLES_DIARIAS = "precipitation_sum,wind_speed_10m_max"
 UNIDAD_VIENTO = "ms"
 
-# Ventana máxima de la API de forecast (limitación de Open-Meteo)
+# Ventana máxima de la API de predicción (limitación de Open-Meteo)
 DIAS_FORECAST = 16
 
 
@@ -53,7 +52,7 @@ def _obtener_parametros_ubicacion():
 
 
 def _obtener_valores_fallback():
-    """Devuelve los valores medios de fallback configurados."""
+    """ Devuelve los valores medios de fallback configurados."""
     config = cargar_configuracion()
     return {
         "precipitacion": config["restaurante"]["precipitacion_media_mm"],
@@ -77,9 +76,7 @@ def _llamar_api_historica(fecha_inicio, fecha_fin):
 
 
 def _llamar_api_forecast(fecha_inicio, fecha_fin):
-    """
-    Recupera previsión meteorológica de Open-Meteo (hasta 16 días).
-    """
+    # Recupera previsión meteorológica de Open-Meteo (hasta 16 días).
     params = _obtener_parametros_ubicacion()
     params["start_date"] = fecha_inicio.strftime("%Y-%m-%d")
     params["end_date"] = fecha_fin.strftime("%Y-%m-%d")
@@ -112,7 +109,7 @@ def _construir_dataframe(datos_api, fechas):
 
 
 def _construir_dataframe_fallback(fechas):
-    """Construye un DataFrame con valores medios cuando la API no está disponible."""
+    #Construye un DataFrame con valores medios cuando la API no está disponible.
     fallback = _obtener_valores_fallback()
     return pd.DataFrame({
         "ds": fechas,
@@ -133,7 +130,7 @@ def _mensaje_fallback():
 
 
 def _mensaje_estacional():
-    """Construye el mensaje informativo del modo estacional."""
+    #Construye el mensaje informativo del modo estacional.
     fallback = _obtener_valores_fallback()
     return (
         f"El periodo solicitado se sitúa más allá de los {DIAS_FORECAST} "
@@ -175,7 +172,8 @@ def obtener_clima(fecha_inicio, fecha_fin):
             df = _construir_dataframe_fallback(fechas)
             return df, "fallback", _mensaje_fallback()
 
-    # Caso 2: el periodo entero está dentro de la ventana de forecast
+    # Caso 2: el periodo entero está en el futuro y 
+    # dentro de los días que Open-Meteo puede darnos predicciones
     if fecha_inicio >= hoy and fecha_fin <= limite_forecast:
         try:
             datos = _llamar_api_forecast(fecha_inicio, fecha_fin)
@@ -189,6 +187,6 @@ def obtener_clima(fecha_inicio, fecha_fin):
             df = _construir_dataframe_fallback(fechas)
             return df, "fallback", _mensaje_fallback()
 
-    # Caso 3: el periodo está más allá del horizonte de forecast
+    # Caso 3: el periodo está más allá del horizonte de predicción
     df = _construir_dataframe_fallback(fechas)
     return df, "estacional", _mensaje_estacional()

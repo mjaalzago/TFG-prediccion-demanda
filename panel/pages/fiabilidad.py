@@ -1,7 +1,6 @@
 """
 Página de Fiabilidad del panel.
-Vista orientada al gestor: explica de forma no técnica el grado
-de confianza de las predicciones que ofrece el sistema.
+Muestra al usuario cuándo una predicción es más o menos recomendable
 """
 
 import streamlit as st
@@ -18,27 +17,21 @@ from utils.metricas import (
     mae_segun_horizonte,
 )
 
-# ---------------------------------------------------------------
 # Renderizado de la página
-# ---------------------------------------------------------------
-
 st.title("Fiabilidad de las predicciones")
 st.markdown(
     "Información sobre el grado de confianza de las predicciones que "
     "ofrece el panel."
 )
 
-# ===============================================================
-# BLOQUE GENERAL (siempre visible)
-# ===============================================================
-
+# Bloque general.
 st.header("¿Cómo medimos la fiabilidad?")
 st.markdown(
     "El sistema se ha entrenado con datos reales de pedidos entre "
     f"el **{INICIO_ENTRENAMIENTO.strftime('%d/%m/%Y')}** y el "
     f"**{FIN_ENTRENAMIENTO.strftime('%d/%m/%Y')}**. Su precisión se "
     "ha evaluado comparando las predicciones del sistema con la "
-    "demanda real registrada en ese mismo periodo."
+    "demanda real registrada en los datos reservados para evaluación."
 )
 
 st.subheader("Margen de error medio del sistema")
@@ -91,10 +84,8 @@ with col_r.container(border=True):
 
 st.divider()
 
-# ===============================================================
-# BLOQUE ESPECÍFICO (solo si hay fecha en session_state)
-# ===============================================================
 
+# Si hay fecha en session_state
 st.header("Fiabilidad de tu consulta")
 
 # Recuperación del contexto de la consulta.
@@ -176,8 +167,8 @@ else:
         st.markdown("**Margen de error esperado**")
         st.markdown(
             "No es posible estimarlo con fiabilidad para esta "
-            "fecha. El sistema solo puede garantizar la precisión "
-            "medida en su periodo de entrenamiento."
+            "fecha. El sistema solo dispone de una estimación de error "
+            "basada en su periodo de entrenamiento."
         )
 
     # Recomendación según nivel

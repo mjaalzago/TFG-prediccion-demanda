@@ -1,25 +1,21 @@
 # Configuración del panel de predicción de demanda.
-# Edite este fichero para adaptar el panel a un restaurante concreto
+# Edita este fichero para adaptar el panel a un restaurante concreto
 # o a un nuevo entrenamiento del modelo.
 #
 # Las métricas de evaluación se obtienen de la validación cruzada
 # realizada en los notebooks 3 y 4. Si se reentrenan los modelos,
-# actualice los valores de la sección [metricas].
+# actualiza los valores de la sección [metricas].
 
-# ============================================================
+# 
 # Información del modelo entrenado
-# ============================================================
-
 [modelo]
 # Periodo de entrenamiento (formato ISO: YYYY-MM-DD)
 inicio_entrenamiento = "2016-09-01"
 fin_entrenamiento = "2019-08-03"
 
-# ============================================================
+# 
 # Métricas de evaluación de los modelos en validación cruzada
-# (corresponden a la Tabla 11 del TFG)
-# ============================================================
-
+# (Tabla 11 del TFG)
 [metricas.prophet_corto]
 horizonte_dias = 14
 mae = 6.54
@@ -46,10 +42,8 @@ rmse = 16.75
 # en la serie real genera distorsiones porcentuales no
 # representativas en este horizonte.
 
-# ============================================================
+# 
 # Configuración del restaurante
-# ============================================================
-
 [restaurante]
 # Código de país y subdivisión para la librería holidays
 pais = "GB"
@@ -64,24 +58,22 @@ zona_horaria = "Europe/London"
 
 # Valores medios de fallback (cuando la API no está disponible
 # o se solicita una fecha más allá del horizonte de previsión).
-# Estos valores deberían reflejar la climatología media del lugar
+# Estos valores deben reflejar la climatología media del lugar
 # del restaurante.
 precipitacion_media_mm = 0.0
 viento_medio_ms = 4.5
 
-# ============================================================
+# 
 # Configuración de la lógica de fiabilidad
-# ============================================================
-
 [fiabilidad]
 # Días desde el fin del entrenamiento para clasificar la fiabilidad
 # de las predicciones en el panel del gestor.
 umbral_verde_dias = 30
 umbral_ambar_dias = 180
 
-# ============================================================
+# 
 # Festivos locales adicionales
-# ============================================================
+# 
 # Festivos específicos del municipio o del establecimiento que no
 # están recogidos en el calendario nacional. Cada entrada se define
 # con la fecha en formato ISO (YYYY-MM-DD) y un nombre descriptivo.

@@ -7,9 +7,9 @@ backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F0F4F5"
 textColor = "#1f3a5f"
 
-# Tipografía
+# Tipografía . 
 font = "sans serif"
 
-[server]
+[server] 
 # Puerto local del panel
 port = 8501

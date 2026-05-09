@@ -12,7 +12,7 @@ import streamlit as st
 
 
 def inicio():
-    """Página de bienvenida del panel."""
+    #Página de bienvenida del panel
     st.title("Panel de predicción de demanda")
     st.markdown("**Restaurantes con reparto a domicilio**")
 

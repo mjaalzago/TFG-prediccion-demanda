@@ -1,10 +1,10 @@
 """
-Carga unificada de festivos para el panel y los notebooks.
+Carga de festivos para el panel y los notebooks.
 
 Permite obtener festivos nacionales y regionales mediante la librería
-holidays, y añadir festivos locales adicionales definidos por
-configuración. Se utiliza tanto en el entrenamiento del modelo
-(notebooks) como en la visualización del panel (Streamlit).
+holidays, y añadir festivos locales definidos en la configuración.
+Se utiliza tanto en el entrenamiento del modelo (notebooks) 
+como en la visualización del panel (Streamlit).
 """
 
 import pandas as pd
@@ -19,7 +19,7 @@ def cargar_festivos(
 ) -> pd.DataFrame:
     """
     Carga los festivos para un país y opcionalmente una subdivisión,
-    permitiendo añadir festivos locales adicionales.
+    permitiendo añadir festivos locales.
 
     Parámetros
     ----------
@@ -27,9 +27,9 @@ def cargar_festivos(
     subdivision : código de la subdivisión regional (ej. 'ENG', 'MD').
                   None para festivos nacionales únicamente.
     años : rango de años a incluir.
-    festivos_locales : lista opcional de tuplas (fecha, nombre) con
-                       festivos locales no recogidos en la librería.
-
+    festivos_locales : lista de tuplas (fecha, nombre) con
+                       festivos locales (son opcionales).
+    
     Devuelve
     --------
     DataFrame con columnas 'fecha' (datetime64) y 'festivo_nombre',

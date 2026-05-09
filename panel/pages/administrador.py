@@ -1,11 +1,9 @@
 """
 Página de Administrador.
 
-Vista técnica orientada al perfil de administrador del sistema.
 Muestra información sobre los modelos entrenados y las métricas
 de evaluación comparativa frente al modelo de referencia.
 
-Cubre los requisitos RF06, RF07, RF11 y el caso de uso CU03.
 """
 
 from datetime import date
@@ -20,20 +18,14 @@ from utils.metricas import (
 )
 
 
-# ===============================================================
-# Encabezado
-# ===============================================================
-
+# Encabezado 
 st.title("Administrador")
 st.markdown(
     "Vista técnica del sistema con información sobre los modelos "
     "entrenados y sus métricas de evaluación."
 )
 
-# ===============================================================
-# BLOQUE A: información del modelo
-# ===============================================================
-
+# Información del modelo
 st.header("Modelos entrenados")
 
 col_corto, col_medio = st.columns(2)
@@ -74,18 +66,15 @@ st.subheader("Modelo de referencia")
 st.markdown(
     "Para validar el rendimiento del modelo principal se ha "
     "implementado un modelo de referencia basado en SARIMA "
-    "(*Seasonal ARIMA*), un enfoque estadístico clásico ampliamente "
+    "(*Seasonal ARIMA*), un enfoque estadístico clásico muy "
     "utilizado en predicción de series temporales. La comparativa "
-    "permite cuantificar la aportación de las variables contextuales "
-    "externas que utiliza Prophet frente al enfoque clásico."
+    "permite medir la aportación de las variables contextuales "
+    "externas que utiliza Prophet frente al modelo clásico."
 )
 
 st.divider()
 
-# ===============================================================
-# BLOQUE B: métricas comparativas (Tabla 11 del TFG)
-# ===============================================================
-
+# Métricas comparativas (Tabla 11 del TFG)-
 st.header("Métricas de evaluación comparativa")
 st.markdown(
     "Comparación de las métricas de error entre el modelo principal "
@@ -143,16 +132,12 @@ st.markdown(
     "El modelo Prophet supera al modelo de referencia SARIMA en "
     "todas las métricas evaluadas y en ambos horizontes. La mejora "
     "es especialmente significativa en el MAPE a 14 días, donde "
-    "Prophet reduce el error porcentual a menos de la mitad. Estos "
-    "resultados confirman la aportación de las variables contextuales "
-    "externas (clima) que utiliza Prophet frente al enfoque "
-    "puramente endógeno de SARIMA."
+    "Prophet reduce el error porcentual a menos de la mitad. En este "
+    "caso se observa que las variables contextuales contribuyen a mejorar "
+    "el rendimiento de Prophet en este conjunto de datos."
 )
 
-# ===============================================================
-# BLOQUE C: visualizaciones comparativas
-# ===============================================================
-
+# Visualizaciones comparativas.
 st.divider()
 
 st.header("Visualización comparativa")

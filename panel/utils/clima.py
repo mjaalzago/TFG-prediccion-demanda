@@ -1,7 +1,7 @@
 """
 Obtención de datos meteorológicos desde la API de Open-Meteo.
 
-Dependiendo de la fecha, se slecciona la fuente de datos:
+Dependiendo de la fecha, se selecciona la fuente de datos:
 
 - Fechas pasadas: API histórica (datos meteorológicos reales).
 - Fechas en los próximos 16 días: API de forecast (previsión real).
@@ -32,8 +32,8 @@ URL_FORECAST = "https://api.open-meteo.com/v1/forecast"
 # acopladas a los regresores que utiliza el modelo Prophet, por lo que
 # no se exponen en la configuración: cambiarlas implicaría reentrenar
 # el modelo.
-VARIABLES_DIARIAS = "precipitation_sum,wind_speed_10m_max"
-UNIDAD_VIENTO = "ms"
+VARIABLES_DIARIAS = "temperature_2m_mean,wind_speed_10m_mean,cloud_cover_mean"
+UNIDAD_VIENTO = "kmh"
 
 # Ventana máxima de la API de predicción (limitación de Open-Meteo)
 DIAS_FORECAST = 16
@@ -52,11 +52,12 @@ def _obtener_parametros_ubicacion():
 
 
 def _obtener_valores_fallback():
-    """ Devuelve los valores medios de fallback configurados."""
+    """Devuelve los valores medios de fallback configurados."""
     config = cargar_configuracion()
     return {
-        "precipitacion": config["restaurante"]["precipitacion_media_mm"],
-        "viento": config["restaurante"]["viento_medio_ms"],
+        "temp": config["restaurante"]["temp_media_dia"],
+        "viento": config["restaurante"]["viento_medio_serv"],
+        "nubosidad": config["restaurante"]["nubosidad_media_dia"],
     }
 
 
@@ -76,7 +77,7 @@ def _llamar_api_historica(fecha_inicio, fecha_fin):
 
 
 def _llamar_api_forecast(fecha_inicio, fecha_fin):
-    # Recupera previsión meteorológica de Open-Meteo (hasta 16 días).
+    """Recupera previsión meteorológica de Open-Meteo (hasta 16 días)."""
     params = _obtener_parametros_ubicacion()
     params["start_date"] = fecha_inicio.strftime("%Y-%m-%d")
     params["end_date"] = fecha_fin.strftime("%Y-%m-%d")
@@ -93,28 +94,27 @@ def _construir_dataframe(datos_api, fechas):
     fallback = _obtener_valores_fallback()
     df = pd.DataFrame({
         "ds": pd.to_datetime(datos_api["daily"]["time"]),
-        "precipitacion_total_serv": datos_api["daily"]["precipitation_sum"],
-        "viento_medio_serv": datos_api["daily"]["wind_speed_10m_max"],
+        "temp_media_dia": datos_api["daily"]["temperature_2m_mean"],
+        "viento_medio_serv": datos_api["daily"]["wind_speed_10m_mean"],
+        "nubosidad_media_dia": datos_api["daily"]["cloud_cover_mean"],
     })
     # Reindexamos por las fechas solicitadas y rellenamos posibles huecos
     df = df.set_index("ds").reindex(fechas).reset_index()
     df = df.rename(columns={"index": "ds"})
-    df["precipitacion_total_serv"] = df["precipitacion_total_serv"].fillna(
-        fallback["precipitacion"]
-    )
-    df["viento_medio_serv"] = df["viento_medio_serv"].fillna(
-        fallback["viento"]
-    )
+    df["temp_media_dia"] = df["temp_media_dia"].fillna(fallback["temp"])
+    df["viento_medio_serv"] = df["viento_medio_serv"].fillna(fallback["viento"])
+    df["nubosidad_media_dia"] = df["nubosidad_media_dia"].fillna(fallback["nubosidad"])
     return df
 
 
 def _construir_dataframe_fallback(fechas):
-    #Construye un DataFrame con valores medios cuando la API no está disponible.
+    """Construye un DataFrame con valores medios cuando la API no está disponible."""
     fallback = _obtener_valores_fallback()
     return pd.DataFrame({
         "ds": fechas,
-        "precipitacion_total_serv": [fallback["precipitacion"]] * len(fechas),
+        "temp_media_dia": [fallback["temp"]] * len(fechas),
         "viento_medio_serv": [fallback["viento"]] * len(fechas),
+        "nubosidad_media_dia": [fallback["nubosidad"]] * len(fechas),
     })
 
 
@@ -124,20 +124,22 @@ def _mensaje_fallback():
     return (
         "No se pudo conectar con la API meteorológica. La predicción "
         "se ha generado con valores medios de fallback "
-        f"(precipitación {fallback['precipitacion']} mm/día, "
-        f"viento {fallback['viento']} m/s) y puede perder fiabilidad."
+        f"(temperatura {fallback['temp']} °C, "
+        f"viento {fallback['viento']} km/h, "
+        f"nubosidad {fallback['nubosidad']} %) y puede perder fiabilidad."
     )
 
 
 def _mensaje_estacional():
-    #Construye el mensaje informativo del modo estacional.
+    """Construye el mensaje informativo del modo estacional."""
     fallback = _obtener_valores_fallback()
     return (
         f"El periodo solicitado se sitúa más allá de los {DIAS_FORECAST} "
         f"días que cubre la previsión meteorológica de Open-Meteo. La "
         f"predicción utiliza valores medios estacionales "
-        f"(precipitación {fallback['precipitacion']} mm/día, "
-        f"viento {fallback['viento']} m/s)."
+        f"(temperatura {fallback['temp']} °C, "
+        f"viento {fallback['viento']} km/h, "
+        f"nubosidad {fallback['nubosidad']} %)."
     )
 
 
@@ -147,7 +149,8 @@ def obtener_clima(fecha_inicio, fecha_fin):
     Obtiene los datos meteorológicos para el periodo solicitado.
 
     Devuelve una tupla (DataFrame, fuente, mensaje) donde:
-    - DataFrame contiene las columnas ds, precipitacion_total_serv y viento_medio_serv.
+    - DataFrame contiene las columnas ds, temp_media_dia, 
+      viento_medio_serv y nubosidad_media_dia.
     - fuente indica de dónde provienen los datos: 'historico', 'forecast',
       'estacional' o 'fallback'.
     - mensaje contiene un texto explicativo para mostrar al usuario.

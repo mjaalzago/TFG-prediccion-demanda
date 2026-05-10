@@ -15,32 +15,29 @@ fin_entrenamiento = "2019-08-03"
 
 # 
 # Métricas de evaluación de los modelos en validación cruzada
-# (Tabla 11 del TFG)
 [metricas.prophet_corto]
 horizonte_dias = 14
-mae = 6.54
-rmse = 8.59
-mape = 25.32
+mae = 3.83
+rmse = 4.91
+mape = 27.12
 
 [metricas.prophet_medio]
 horizonte_dias = 30
-mae = 7.25
-rmse = 9.47
-mape = 35.52
+mae = 4.43
+rmse = 6.53
+mape = 27.63
 
 [metricas.sarima_corto]
 horizonte_dias = 14
-mae = 11.14
-rmse = 13.66
-mape = 58.44
+mae = 4.58
+rmse = 5.71
+mape = 37.59
 
 [metricas.sarima_medio]
 horizonte_dias = 30
-mae = 13.93
-rmse = 16.75
-# mape no se incluye: la presencia de valores cercanos a cero
-# en la serie real genera distorsiones porcentuales no
-# representativas en este horizonte.
+mae = 5.12
+rmse = 6.61
+mape = 41.95
 
 # 
 # Configuración del restaurante
@@ -56,12 +53,14 @@ longitud = -0.1278
 # Zona horaria para la API de Open-Meteo (formato IANA)
 zona_horaria = "Europe/London"
 
-# Valores medios de fallback (cuando la API no está disponible
-# o se solicita una fecha más allá del horizonte de previsión).
+# Valores medios de fallback para los regresores meteorológicos
+# del modelo de corto plazo (cuando la API no está disponible o
+# se solicita una fecha sin previsión disponible).
 # Estos valores deben reflejar la climatología media del lugar
 # del restaurante.
-precipitacion_media_mm = 0.0
-viento_medio_ms = 4.5
+temp_media_dia = 11.5      # Temperatura media diaria (°C)
+viento_medio_serv = 12.0   # Viento medio en franja de servicio (km/h)
+nubosidad_media_dia = 70.0 # Nubosidad media diaria (%)
 
 # 
 # Configuración de la lógica de fiabilidad
@@ -85,6 +84,85 @@ umbral_ambar_dias = 180
 # las líneas de ejemplo y modifíquelas según corresponda.
 
 
-#[[festivos_locales]]
-#fecha = "2019-05-03"
-#nombre = "Día de la Cruz"
+# 
+# Festivos personalizados
+# 
+# Festividades adicionales no recogidas en el calendario oficial
+# del país (librería holidays). Pueden ser de dos tipos:
+# 
+# - Festivos locales municipales no incluidos en la subdivisión
+#   regional (San Isidro en Madrid, Virgen de la Almudena, etc.).
+# - Festividades sociales recurrentes con efecto demostrado sobre
+#   la demanda del restaurante (San Valentín, Mother's Day,
+#   Nochebuena, Nochevieja, Black Friday...).
+# 
+# La fecha admite dos formatos:
+#   - "MM-DD": fecha fija recurrente anual (San Valentín, Nochebuena).
+#     El sistema la aplica automáticamente a todos los años.
+#   - "YYYY-MM-DD": fecha específica de un año concreto, útil para
+#     festividades de fecha variable como Mother's Day UK 
+#     (cuarto domingo de Cuaresma).
+
+# San Valentín (recurrente)
+[[festivos_personalizados]]
+fecha = "02-14"
+nombre = "Valentine's Day"
+
+# Nochebuena (recurrente)
+[[festivos_personalizados]]
+fecha = "12-24"
+nombre = "Christmas Eve"
+
+# Nochevieja (recurrente)
+[[festivos_personalizados]]
+fecha = "12-31"
+nombre = "New Year's Eve"
+
+# Mother's Day UK (cuarto domingo de Cuaresma, fecha variable)
+[[festivos_personalizados]]
+fecha = "2016-03-06"
+nombre = "Mother's Day"
+
+[[festivos_personalizados]]
+fecha = "2017-03-26"
+nombre = "Mother's Day"
+
+[[festivos_personalizados]]
+fecha = "2018-03-11"
+nombre = "Mother's Day"
+
+[[festivos_personalizados]]
+fecha = "2019-03-31"
+nombre = "Mother's Day"
+
+[[festivos_personalizados]]
+fecha = "2020-03-22"
+nombre = "Mother's Day"
+
+[[festivos_personalizados]]
+fecha = "2021-03-14"
+nombre = "Mother's Day"
+
+[[festivos_personalizados]]
+fecha = "2022-03-27"
+nombre = "Mother's Day"
+
+[[festivos_personalizados]]
+fecha = "2023-03-19"
+nombre = "Mother's Day"
+
+[[festivos_personalizados]]
+fecha = "2024-03-10"
+nombre = "Mother's Day"
+
+[[festivos_personalizados]]
+fecha = "2025-03-30"
+nombre = "Mother's Day"
+
+[[festivos_personalizados]]
+fecha = "2026-03-15"
+nombre = "Mother's Day"
+
+[[festivos_personalizados]]
+fecha = "2027-03-07"
+nombre = "Mother's Day"

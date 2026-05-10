@@ -39,10 +39,10 @@ def _cargar_configuracion_cacheada(mtime: float) -> dict:
         config["modelo"]["fin_entrenamiento"]
     )
 
-    # Si no hay festivos locales configurados, dejamos lista vacía
+    # Si no hay festivos personalizados configurados, dejamos lista vacía
     # para que el resto del código no necesite hacer comprobaciones.
-    if "festivos_locales" not in config:
-        config["festivos_locales"] = []
+    if "festivos_personalizados" not in config:
+        config["festivos_personalizados"] = []
 
     return config
 

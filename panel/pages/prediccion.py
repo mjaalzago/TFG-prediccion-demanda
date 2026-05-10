@@ -35,7 +35,7 @@ with st.sidebar:
         "Fecha de inicio",
         value=date(2019, 6, 1),
         min_value=date(2016, 9, 1),
-        max_value=date(2030, 12, 31),
+        max_value=date(2027, 3, 31),
         format="DD/MM/YYYY",
         help="Primer día del periodo a predecir.",
     )
@@ -80,8 +80,9 @@ if generar:
                 fecha_inicio,
                 fecha_inicio + timedelta(days=horizonte - 1),
             )
-            df_futuro["precipitacion_total_serv"] = df_clima["precipitacion_total_serv"].values
+            df_futuro["temp_media_dia"] = df_clima["temp_media_dia"].values
             df_futuro["viento_medio_serv"] = df_clima["viento_medio_serv"].values
+            df_futuro["nubosidad_media_dia"] = df_clima["nubosidad_media_dia"].values
         else:
             fuente_clima = None
             mensaje_clima = None
@@ -101,16 +102,16 @@ if generar:
         # Festivos del país y locales configurados en la ventana consultada.
         # Se utiliza la misma función que el modelo Prophet usa en el
         # entrenamiento, garantizando coherencia entre el modelo y el panel.
-        festivos_locales_config = [
+        festivos_personalizados_config = [
             (f["fecha"], f["nombre"])
-            for f in config["festivos_locales"]
+            for f in config["festivos_personalizados"]
         ]
 
         df_festivos = cargar_festivos(
             pais_codigo=config["restaurante"]["pais"],
             subdivision=config["restaurante"]["subdivision"],
             años=range(fecha_inicio.year, fecha_fin.year + 1),
-            festivos_locales=festivos_locales_config or None,
+            festivos_personalizados=festivos_personalizados_config or None,
         )
 
         # Filtrar al periodo de la consulta y convertir a la lista de tuplas

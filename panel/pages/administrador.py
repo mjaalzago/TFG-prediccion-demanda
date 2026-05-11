@@ -36,9 +36,9 @@ with col_corto.container(border=True):
         f"""
         - **Algoritmo:** Prophet (Meta)
         - **Horizonte:** 14 días
-        - **Regresores externos:** precipitación total, viento medio
+        - **Regresores externos:** temperatura media del día, humedad media del día, viento medio en la ventana de servicio
         - **Estacionalidades:** semanal, anual
-        - **Festivos:** habilitados (calendario nacional)
+        - **Festivos:** habilitados (calendario nacional/regional) + festivos sociales (San Valentín, Mother's Day, Christmas Eve, New Year's Eve)
         """
     )
 
@@ -50,7 +50,7 @@ with col_medio.container(border=True):
         - **Horizonte:** 30 días
         - **Regresores externos:** ninguno
         - **Estacionalidades:** semanal, anual
-        - **Festivos:** habilitados (calendario nacional)
+        - **Festivos:** habilitados (calendario nacional/regional) + festivos sociales (San Valentín, Mother's Day, Christmas Eve, New Year's Eve
         """
     )
 

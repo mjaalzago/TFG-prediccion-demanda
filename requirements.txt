@@ -28,5 +28,5 @@ pmdarima==2.0.4
 scikit-learn==1.5.2
 
 # Panel de visualización
-streamlit==1.40.0
+streamlit==1.57.0
 # plotly==5.24.1
